@@ -1,5 +1,7 @@
 package com.company;
 
+import org.json.JSONObject;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,71 +9,64 @@ import java.util.*;
 
 public class SettingsManager {
 
-    private static final String propFileName = "config.properties";
-    private static Properties props;
-    private static InputStream inputStream;
+    private final String propFileName = "config.properties";
+    private Properties props;
+    private InputStream inputStream;
 
     // TODO пересмотреть SettingsManager IOException
-    public SettingsManager() throws IOException {
+    SettingsManager() throws IOException {
 
+
+        props = new Properties();
+        inputStream = getClass().getClassLoader().getResourceAsStream(propFileName);
 
         try {
 
-            props = new Properties();
-            inputStream = getClass().getClassLoader().getResourceAsStream(propFileName);
             props.load(inputStream);
 
-
-        } catch (Exception e) {
-            System.out.println("Exception: " + e);
-
-        } finally {
+        } catch (IOException e) {
             inputStream.close();
+            throw new IOException(e);
         }
 
     }
 
-    // Параметры могут вводится через точку (Nested)
-    // TODO посмотреть как возвращать исключения при чтении файла
-    public String getProp(String prop) {
-
-        try {
-
-            String propValue = props.getProperty(prop);
-            return propValue;
-
-        } catch (Exception e) {
-            System.out.println("Exception: " + e);
-            return null;
-        }
+    public void addItem(String item, Map<String, String> propTable) {
+        JSONObject itemProps = new JSONObject(propTable);
+        props.putIfAbsent(item, itemProps.toString());
 
     }
 
-    public void setProp(String prop, String value) {
 
-        try {
+    public void delItem(String item) {
+        props.remove(item);
+    }
 
-            props.putIfAbsent(prop, value);
-            props.setProperty(prop, value);
 
-        } catch (Exception e) {
-            System.out.println("Exception: " + e);
+    public String getProp(String item, String prop) {
 
+        String itemValue = props.getProperty(item);
+
+        if(itemValue != null) {
+            JSONObject itemProps = new JSONObject(itemValue);
+            return itemProps.getString(prop);
         }
+
+        return null;
 
     }
 
-    public void delProp(String prop) {
-        try {
+    public void setProp(String item, String prop, String value) {
 
-            props.remove(prop);
+        String itemValue = props.getProperty(item);
+        JSONObject itemProps = new JSONObject(itemValue);
+        itemProps.put(prop, value);
+        props.setProperty(item, itemProps.toString());
 
-        } catch (Exception e) {
-            System.out.println("Exception: " + e);
-        }
     }
 
     public Map<String, String>  getAllFromPropFile() {
+
         Map<String, String> data = new HashMap<>();
 
         for(Map.Entry<Object, Object> entry : props.entrySet()) {
@@ -81,6 +76,8 @@ public class SettingsManager {
         return data;
     }
 
-    public void clearSettings() {}
+    public void clearSettings() {
+        props.clear();
+    }
 
 }

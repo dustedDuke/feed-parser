@@ -4,11 +4,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.util.Date;
 import java.io.InputStreamReader;
+import java.util.List;
 
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
@@ -22,12 +21,27 @@ import org.apache.http.impl.client.HttpClients;
 
 public class Feed extends Thread {
 
-    private URL url;
-    private String fileName;
-    private LocalDateTime lastUpdateDateTime;
-    private int updatePeriod;
+    private volatile URL url;
+    private volatile String fileName;
+    private volatile ZonedDateTime lastUpdateDateTime;
+    private volatile Duration updatePeriod;
 
-    public Feed(URL url, String fileName, LocalDateTime lastUpdateDateTime, int updatePeriod) {
+    private volatile List<String> itemsToRead;
+
+    public void setUrl(URL url) {
+        this.url = url;
+    }
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+    public void setLastUpdateDateTime(ZonedDateTime lastUpdateDateTime) {
+        this.lastUpdateDateTime = lastUpdateDateTime;
+    }
+    public void setUpdatePeriod(Duration updatePeriod) {
+        this.updatePeriod = updatePeriod;
+    }
+
+    public Feed(URL url, String fileName, ZonedDateTime lastUpdateDateTime, Duration updatePeriod) {
         this.url = url;
         this.fileName = fileName;
         this.lastUpdateDateTime = lastUpdateDateTime;
@@ -46,10 +60,11 @@ public class Feed extends Thread {
 
                 FileWriter fileWriter = new FileWriter(fileName, true);
 
-                while(lastUpdateDateTime.compareTo(LocalDateTime.now()) < 0) {
+                while(lastUpdateDateTime.compareTo(ZonedDateTime.now()) < 0) {
 
                     CloseableHttpResponse response = client.execute(request);
                     InputStream stream = response.getEntity().getContent();
+
                     SyndFeedInput input = new SyndFeedInput();
                     SyndFeed feed = input.build(new XmlReader(stream));
                     //System.out.println(feed.getTitle());
@@ -60,7 +75,7 @@ public class Feed extends Thread {
                     // TODO выбор полей
                     fileWriter.append(feed.toString());
 
-                    lastUpdateDateTime = LocalDateTime.now().plusMinutes(30);
+                    lastUpdateDateTime = ZonedDateTime.now().plus(updatePeriod);
 
                 }
 
@@ -75,17 +90,20 @@ public class Feed extends Thread {
     }
 
     // TODO переместить в utils
-    private static LocalDateTime sum(LocalDateTime t1, LocalDateTime t2) {
-
-        LocalDateTime newT1 = t1.plusYears(t2.getYear())
-            .plusMonths(t2.getMonthValue())
-            .plusDays(t2.getDayOfMonth())
-            .plusHours(t2.getHour())
-            .plusMinutes(t2.getMinute())
-            .plusSeconds(t2.getSecond());
-
-        return newT1;
-
-    }
+//    private static ZonedDateTime sum(ZonedDateTime t1, ZonedDateTime t2) {
+//
+//        LocalDateTime newT1 = t1.plusYears(t2.getYear())
+//            .plusMonths(t2.getMonthValue())
+//            .plusDays(t2.getDayOfMonth())
+//            .plusHours(t2.getHour())
+//            .plusMinutes(t2.getMinute())
+//            .plusSeconds(t2.getSecond());
+//
+//        ZonedDateTime newT1 =
+//                t1.pl
+//
+//        return newT1;
+//
+//    }
 
 }

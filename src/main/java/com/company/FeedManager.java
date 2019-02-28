@@ -5,7 +5,10 @@ package com.company;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,7 +18,7 @@ public class FeedManager {
     private static SettingsManager settingsManager;
 
     // TODO исправить дату на Duration
-    private static final int defaultUpdatePeriod = 30;
+    private static final Duration defaultUpdatePeriod = Duration.parse("PT20.345S");
 
 
     public FeedManager(SettingsManager settingsManager) {
@@ -30,18 +33,21 @@ public class FeedManager {
             String[] values = entry.getValue().split("\\|");
 
             try {
-                subscribeTo(new URL(entry.getKey()), values[0], LocalDateTime.parse(values[1]),
-                        Integer.parseInt(values[2]));
+                LocalDateTime ldt = LocalDateTime.parse(values[1]);
+                subscribeTo(new URL(entry.getKey()), values[0], ZonedDateTime.of(ldt, ZoneId.of("Europe/Moscow")),
+                        Duration.parse(values[2]));
             } catch (MalformedURLException e) {
                 System.out.println(e.getMessage());
             }
 
         }
 
+        // TODO сбор всех настроек в конце
+
 
     }
 
-    public void subscribeTo(URL url, String fileName, LocalDateTime lastUpdateTime, int updatePeriod) {
+    public void subscribeTo(URL url, String fileName, ZonedDateTime lastUpdateTime, Duration updatePeriod) {
 
         Feed feed = new Feed(url, fileName, lastUpdateTime, updatePeriod);
 
@@ -52,25 +58,26 @@ public class FeedManager {
 
     }
 
-    public void subscribeTo(URL url, String fileName, int updatePeriod) {
-        LocalDateTime currentDateTime = LocalDateTime.now();
+    public void subscribeTo(URL url, String fileName, Duration updatePeriod) {
+
+        ZonedDateTime currentDateTime = ZonedDateTime.now();
         Feed feed = new Feed(url, fileName, currentDateTime, updatePeriod);
 
         //Запуск потока
         feed.start();
         feeds.put(url, feed);
 
-        StringBuilder builder = new StringBuilder();
-        builder.append(url.toString() + "|")
-                .append(fileName + "|")
-                .append(currentDateTime.toString() + "|")
-                .append(Integer.toString(updatePeriod));
+        Map<String, String> set = new HashMap<>();
+        set.put("fileName", fileName);
+        set.put("lastUpdateTime", currentDateTime.toString());
+        set.put("updatePeriod", updatePeriod.toString());
 
-        settingsManager.setProp(url.toString(), builder.toString());
+        settingsManager.addItem(url.toString(), set);
+
     }
 
     public void subscribeTo(URL url, String fileName) {
-        Feed feed = new Feed(url, fileName, LocalDateTime.now(), defaultUpdatePeriod);
+        Feed feed = new Feed(url, fileName, ZonedDateTime.now(), defaultUpdatePeriod);
 
         //Запуск потока
         feed.start();
@@ -80,7 +87,7 @@ public class FeedManager {
 
     public void subscribeTo(URL url) {
         String fileHashName = Integer.toString(url.toString().hashCode());
-        Feed feed = new Feed(url, fileHashName, LocalDateTime.now(), defaultUpdatePeriod);
+        Feed feed = new Feed(url, fileHashName, ZonedDateTime.from(LocalDateTime.now()), defaultUpdatePeriod);
 
         //Запуск потока
         feed.start();
@@ -94,7 +101,7 @@ public class FeedManager {
             if(feedEntry.getKey() == url) {
 
                 feedEntry.getValue().interrupt();
-                settingsManager.delProp(url.toString());
+                settingsManager.delItem(url.toString());
 
                 // TODO очень плохо
                 feeds.remove(feedEntry);
@@ -118,8 +125,24 @@ public class FeedManager {
 
     public void getAllFeedAttribures() {}
 
-    public void setFeedAttribute() {}
 
+
+    public void changeFeedUrl(URL url, URL newUrl) {
+
+    }
+
+    public void changeFeedFileName(URL url, String newFileName) {
+
+    }
+    public void changeFeedLastUpdateTime(URL url, LocalDateTime newUpdateTime) {
+
+    }
+    public void changeFeedUpdatePeriod(URL url, Duration dur) {
+
+        Feed feed = feeds.get(url);
+        feed.setUpdatePeriod(dur);
+
+    }
 
 
 }

@@ -6,6 +6,9 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.ClientInfoStatus;
+import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
@@ -37,7 +40,7 @@ public class ClInterface {
     private void showOptions() {
         System.out.printf(messageFormat, "par [feed ID]", "show current feed parameters");
         //TODO Изменение параметров feed
-        System.out.printf(messageFormat, "freq [feed ID] [freq]", "reload period");
+        System.out.printf(messageFormat, "freq [feed ID] [freq](YYYY-MM-DD-HH-MM-SS)", "reload period");
         System.out.printf(messageFormat, "file [file path]", "choose file to store feed");
         System.out.printf(messageFormat, "batch [batch size]", "choose batch size");
     }
@@ -56,18 +59,41 @@ public class ClInterface {
                 input = in.nextLine();
                 String[] splittedInput = input.split("\\s+");
                 if (splittedInput[0].equals("add")) {
+
+
+
+
                     System.out.println("Adding new feed...");
                     feedManager.subscribeTo(new URL(splittedInput[1]));
+
+
+
+
+
                 } else if (splittedInput[0].equals("rm")) {
+
+
+
                     feedManager.unsubscribeFrom(new URL(splittedInput[1]));
+
+
+
+
                 } else if (splittedInput[0].equals("list")) {
 
                     // do something else
                     System.out.println(feedManager.getAllFeeds().toString());
 
                 } else if (splittedInput[0].equals("params")) {
+
+
+
                     showOptions();
                     readSettingsOptions();
+
+
+
+
                 } else if (splittedInput[0].equals("help")) {
                     showHelp();
                 }
@@ -85,6 +111,9 @@ public class ClInterface {
         feedManager.stopAllThreads();
     }
 
+
+    //
+
     public void readSettingsOptions() {
         String input = "";
         try {
@@ -96,6 +125,22 @@ public class ClInterface {
                     //do something
                 } else if (splittedInput[0].equals("freq")) {
                     //do something else
+
+                    Duration dur = Duration.parse(splittedInput[1]);
+                    feedManager.changeFeedUpdatePeriod(new URL(splittedInput[2]),
+                            dur);
+
+//                    String[] timeStamp = splittedInput[2].split("\\-");
+//                    feedManager.changeFeedUpdatePeriod(new URL(splittedInput[2]),
+//                            ZonedDateTime.of(Integer.parseInt(timeStamp[0]),
+//                                    Integer.parseInt(timeStamp[1]),
+//                                    Integer.parseInt(timeStamp[2]),
+//                                    Integer.parseInt(timeStamp[3]),
+//                                    Integer.parseInt(timeStamp[4]),
+//                                    Integer.parseInt(timeStamp[5]), 0, ZoneId.of("Europe/Moscow")));
+
+
+
                 } else if (splittedInput[0].equals("file")) {
                     // do something else
                 } else if (splittedInput[0].equals("batch")) {
@@ -104,6 +149,10 @@ public class ClInterface {
             }
 
         } catch (InputMismatchException e) {
+            System.out.println("Try again.");
+            System.out.print(">> ");
+            input = in.nextLine();
+        } catch (MalformedURLException e2) {
             System.out.println("Try again.");
             System.out.print(">> ");
             input = in.nextLine();

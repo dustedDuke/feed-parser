@@ -14,14 +14,16 @@ public class Main {
         FeedManager feedManager;
 
         try {
+
             settingsManager = new SettingsManager();
-            feedManager = new FeedManager(settingsManager);
+
          } catch (IOException e) {
+            System.out.println("Error while configuring settings.");
             System.out.println("Exception: " + e);
             return;
         }
 
-
+        feedManager = new FeedManager(settingsManager);
 
         final ClInterface cl = new ClInterface(feedManager);
         cl.start();
