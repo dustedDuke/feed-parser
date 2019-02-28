@@ -8,7 +8,10 @@ import java.time.*;
 import java.util.Date;
 import java.io.InputStreamReader;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 
+import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
@@ -25,8 +28,9 @@ public class Feed extends Thread {
     private volatile String fileName;
     private volatile ZonedDateTime lastUpdateDateTime;
     private volatile Duration updatePeriod;
+    private volatile BlockingQueue<String> fileQueue;
 
-    private volatile List<String> itemsToRead;
+    private volatile Set<String> itemsToRead;
 
     public void setUrl(URL url) {
         this.url = url;
@@ -40,12 +44,43 @@ public class Feed extends Thread {
     public void setUpdatePeriod(Duration updatePeriod) {
         this.updatePeriod = updatePeriod;
     }
+    public void setItemsToRead(Set<String> itemsToRead) {
+        this.itemsToRead = itemsToRead;
+    }
 
-    public Feed(URL url, String fileName, ZonedDateTime lastUpdateDateTime, Duration updatePeriod) {
+
+    public Feed(URL url, String fileName, Set<String> itemsToRead, BlockingQueue<String> fileQueue, ZonedDateTime lastUpdateDateTime, Duration updatePeriod) {
         this.url = url;
         this.fileName = fileName;
         this.lastUpdateDateTime = lastUpdateDateTime;
         this.updatePeriod = updatePeriod;
+        this.fileQueue = fileQueue;
+        this.itemsToRead = itemsToRead;
+    }
+
+    private String filterFeedEntry(SyndEntry entry) {
+
+        String result = "";
+
+        for(String item: itemsToRead) {
+
+            // TODO поставить в правильном порядке
+
+            if(item.equals("author")) result += entry.getAuthor();
+            if(item.equals("category")) result += entry.getCategories().get(0).toString();
+            if(item.equals("channel") || item.equals("feed")) result += entry.getSource().toString();
+            //if(item == "copyright" || item == "rights") result += entry.get
+            if(item.equals("description") || item.equals("summary")) result += entry.getContents().toString();
+            //if(item == "generator") result += entry.get
+            //if(item == "guid" || item == "id") result += entry.get
+            if(item.equals("lastBuildDate") || item.equals("updated")) result += entry.getUpdatedDate().toString();
+            if(item.equals("link")) result += entry.getLink();
+            if(item.equals("pubDate") || item.equals("published")) result += entry.getPublishedDate().toString();
+            if(item.equals("title")) result += entry.getTitle();
+
+        }
+
+        return result;
     }
 
     // TODO разбить на функции
@@ -58,8 +93,6 @@ public class Feed extends Thread {
 
             try {
 
-                FileWriter fileWriter = new FileWriter(fileName, true);
-
                 while(lastUpdateDateTime.compareTo(ZonedDateTime.now()) < 0) {
 
                     CloseableHttpResponse response = client.execute(request);
@@ -69,11 +102,22 @@ public class Feed extends Thread {
                     SyndFeed feed = input.build(new XmlReader(stream));
                     //System.out.println(feed.getTitle());
 
+                    // Проверка валидности фида
+                    if(feed.getPublishedDate() == null || feed.getEntries() == null) {
+                        this.interrupt();
+                    }
+
                     // TODO проверка даты в самом RSS
+                    Date lastUpdate = Date.from(lastUpdateDateTime.toInstant());
+                    if(lastUpdate.compareTo(feed.getPublishedDate()) >= 0) {
+                        continue;
+                    }
 
-
-                    // TODO выбор полей
-                    fileWriter.append(feed.toString());
+                    // Выбор полей
+                    fileQueue.put(feed.toString());
+                    for(SyndEntry entry: feed.getEntries()) {
+                        fileQueue.put(filterFeedEntry(entry));
+                    }
 
                     lastUpdateDateTime = ZonedDateTime.now().plus(updatePeriod);
 
