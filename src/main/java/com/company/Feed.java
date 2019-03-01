@@ -25,12 +25,31 @@ import org.apache.http.impl.client.HttpClients;
 public class Feed extends Thread {
 
     private volatile URL url;
+    private volatile String name;
     private volatile String fileName;
     private volatile ZonedDateTime lastUpdateDateTime;
     private volatile Duration updatePeriod;
     private volatile BlockingQueue<String> fileQueue;
-
     private volatile Set<String> itemsToRead;
+
+    public String getFeedName() {
+        return name;
+    }
+    public String getFileName() {
+        return fileName;
+    }
+    public ZonedDateTime getLastUpdatedateTime() {
+        return lastUpdateDateTime;
+    }
+
+    public Duration getUpdatePeriod() {
+        return updatePeriod;
+    }
+
+    public Set<String> getItemsToRead() {
+        return itemsToRead;
+    }
+
 
     public void setUrl(URL url) {
         this.url = url;
@@ -49,8 +68,11 @@ public class Feed extends Thread {
     }
 
 
-    public Feed(URL url, String fileName, Set<String> itemsToRead, BlockingQueue<String> fileQueue, ZonedDateTime lastUpdateDateTime, Duration updatePeriod) {
+
+
+    public Feed(URL url, String name, String fileName, Set<String> itemsToRead, BlockingQueue<String> fileQueue, ZonedDateTime lastUpdateDateTime, Duration updatePeriod) {
         this.url = url;
+        this.name = name;
         this.fileName = fileName;
         this.lastUpdateDateTime = lastUpdateDateTime;
         this.updatePeriod = updatePeriod;

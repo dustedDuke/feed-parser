@@ -3,6 +3,17 @@ package com.company;
 //import com.company.Feed;
 //import com.company.SettingsManager;
 
+import com.rometools.rome.feed.synd.SyndEntry;
+import com.rometools.rome.feed.synd.SyndFeed;
+import com.rometools.rome.io.SyndFeedInput;
+import com.rometools.rome.io.XmlReader;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
@@ -13,7 +24,17 @@ import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+
+
 public class FeedManager {
+
+    private static final String NAME = "name";
+    private static final String FILENAME = "fileName";
+    private static final String URL = "url";
+    private static final String FIELDS = "fields";
+    private static final String LASTUPDATETIME = "lastUpdateTime";
+    private static final String UPDATEPERIOD = "updatePeriod";
+
 
     private static Map<URL, Feed> feeds;
     private static Map<String, FeedFile> files;
@@ -34,20 +55,22 @@ public class FeedManager {
 
         Map<String, String> settings = this.settingsManager.getAllFromPropFile();
 
+
         for(Map.Entry<String, String> entry : settings.entrySet()) {
 
-            String[] values = entry.getValue().split("\\|");
+            Map<String, String> values = this.settingsManager.jsonStringToMap(entry.getValue());
 
             try {
 
                 URL url = new URL(entry.getKey());
-                String fileName = values[0];
-                Duration dur = Duration.parse(values[2]);
-
-                ZonedDateTime zdt = ZonedDateTime.of(LocalDateTime.parse(values[1]), ZoneId.of("Europe/Moscow"));
+                String name = values.get(NAME);
+                String fileName = values.get(FILENAME);
+                Set<String> fields = new HashSet<>(Arrays.asList(values.get(FIELDS).split(" ")));
+                Duration dur = Duration.parse(values.get(UPDATEPERIOD));
+                ZonedDateTime zdt = ZonedDateTime.of(LocalDateTime.parse(values.get(LASTUPDATETIME)), ZoneId.of("Europe/Moscow"));
 
                 //TODO не default fields
-                subscribeTo(url, fileName, defaultFields, zdt, dur);
+                subscribeTo(url, name, fileName, fields, zdt, dur);
 
 
             } catch (MalformedURLException e) {
@@ -82,11 +105,85 @@ public class FeedManager {
         return feedFile;
     }
 
-    public void subscribeTo(URL url, String fileName, Set<String> fields, ZonedDateTime lastUpdateTime, Duration updatePeriod) {
+    private void newSettingsItem(URL url, String name, String fileName, Set<String> fields, ZonedDateTime lastUpdateTime, Duration updatePeriod) {
+
+        Map<String, String> settings = new HashMap<>();
+        settings.put(NAME, name);
+        settings.put(URL, url.toString());
+        settings.put(FILENAME, fileName);
+        settings.put(FIELDS, String.join(" ", fields));
+        settings.put(LASTUPDATETIME, lastUpdateTime.toString());
+        settings.put(UPDATEPERIOD, updatePeriod.toString());
+
+        settingsManager.addItem(url.toString(), settings);
+
+    }
+
+    public Set<String> testConnection(URL url) {
+
+        try {
+            CloseableHttpClient client = HttpClients.createMinimal();
+            HttpUriRequest request = new HttpGet(url.toString());
+
+            try {
+
+                CloseableHttpResponse response = client.execute(request);
+                InputStream stream = response.getEntity().getContent();
+
+                SyndFeedInput input = new SyndFeedInput();
+                SyndFeed feed = input.build(new XmlReader(stream));
+
+                // Проверка на наличие поля даты и наличие истории
+                if(feed.getPublishedDate() == null || feed.getEntries() == null) {
+                    return null;
+                }
+
+
+                return checkAvailableTags(feed);
+
+
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+            }
+        } finally {
+            System.out.println("done");
+        }
+
+        return null;
+    }
+
+    public Set<String> checkAvailableTags(SyndFeed feed) {
+
+        Set<String> tags = new HashSet<>();
+
+        for(SyndEntry entry : feed.getEntries()) {
+
+            if(entry.getAuthor() != null) tags.add("author");
+            if(entry.getCategories() != null) tags.add("category");
+            if(entry.getSource() != null) tags.add("feed");
+            if(entry.getDescription() != null) tags.add("description");
+            if(entry.getSource() != null) tags.add("feed");
+            if(entry.getUpdatedDate() != null) tags.add("lastBuildDate");
+            if(entry.getLink() != null) tags.add("link");
+            if(entry.getPublishedDate() != null) tags.add("pubDate");
+            if(entry.getTitle() != null) tags.add("title");
+
+        }
+
+        if(feed.getImage() != null) tags.add("image");
+        if(feed.getGenerator() != null) tags.add("generator");
+        if(feed.getCopyright() != null) tags.add("copyright");
+        if(feed.getManagingEditor() != null) tags.add("managingEditor");
+
+        return tags;
+
+    }
+
+    public void subscribeTo(URL url, String name, String fileName, Set<String> fields, ZonedDateTime lastUpdateTime, Duration updatePeriod) {
 
         BlockingQueue<String> fileQueue = newFileQueue(fileName);
 
-        Feed feed = new Feed(url, fileName, fields, fileQueue, lastUpdateTime, updatePeriod);
+        Feed feed = new Feed(url, name, fileName, fields, fileQueue, lastUpdateTime, updatePeriod);
 
         //Запуск потока файла
         FeedFile feedFile = newFeedFile(fileName, fileQueue);
@@ -97,14 +194,17 @@ public class FeedManager {
         feeds.put(url, feed);
 
 
+        newSettingsItem(url, name, fileName, fields, lastUpdateTime, updatePeriod);
+
+
     }
 
-    public void subscribeTo(URL url, String fileName, Set<String> fields, Duration updatePeriod) {
+    public void subscribeTo(URL url, String name, String fileName, Set<String> fields, Duration updatePeriod) {
 
         BlockingQueue<String> fileQueue = newFileQueue(fileName);
 
-        ZonedDateTime currentDateTime = ZonedDateTime.now();
-        Feed feed = new Feed(url, fileName, fields, fileQueue, currentDateTime, updatePeriod);
+        ZonedDateTime lastUpdateTime = ZonedDateTime.now();
+        Feed feed = new Feed(url, name, fileName, fields, fileQueue, lastUpdateTime, updatePeriod);
 
         //Запуск потока файла
         FeedFile feedFile = newFeedFile(fileName, fileQueue);
@@ -114,20 +214,16 @@ public class FeedManager {
         feed.start();
         feeds.put(url, feed);
 
-        Map<String, String> set = new HashMap<>();
-        set.put("fileName", fileName);
-        set.put("lastUpdateTime", currentDateTime.toString());
-        set.put("updatePeriod", updatePeriod.toString());
-
-        settingsManager.addItem(url.toString(), set);
+        newSettingsItem(url, name, fileName, fields, lastUpdateTime, updatePeriod);
 
     }
 
-    public void subscribeTo(URL url, String fileName, Set<String> fields) {
+    public void subscribeTo(URL url, String name, String fileName, Set<String> fields) {
 
         BlockingQueue<String> fileQueue = newFileQueue(fileName);
 
-        Feed feed = new Feed(url, fileName, fields, fileQueue, ZonedDateTime.now(), defaultUpdatePeriod);
+        ZonedDateTime lastUpdateTime = ZonedDateTime.now();
+        Feed feed = new Feed(url, name, fileName, fields, fileQueue, lastUpdateTime, defaultUpdatePeriod);
 
         //Запуск потока файла
         FeedFile feedFile = newFeedFile(fileName, fileQueue);
@@ -136,24 +232,29 @@ public class FeedManager {
         //Запуск потока
         feed.start();
         feeds.put(url, feed);
+
+        newSettingsItem(url, name, fileName, fields, lastUpdateTime, defaultUpdatePeriod);
 
     }
 
     public void subscribeTo(URL url) {
 
-        String fileHashName = Integer.toString(url.toString().hashCode());
-        BlockingQueue<String> fileQueue = newFileQueue(fileHashName);
-        fileQueues.put(fileHashName, fileQueue);
+        String fileName = Integer.toString(url.toString().hashCode());
+        BlockingQueue<String> fileQueue = newFileQueue(fileName);
+        fileQueues.put(fileName, fileQueue);
 
-        Feed feed = new Feed(url, fileHashName, defaultFields, fileQueue, ZonedDateTime.from(LocalDateTime.now()), defaultUpdatePeriod);
+        ZonedDateTime lastUpdateTime = ZonedDateTime.from(LocalDateTime.now());
+        Feed feed = new Feed(url, fileName, fileName, defaultFields, fileQueue, lastUpdateTime, defaultUpdatePeriod);
 
         //Запуск потока файла
-        FeedFile feedFile = newFeedFile(fileHashName, fileQueue);
+        FeedFile feedFile = newFeedFile(fileName, fileQueue);
         feedFile.start();
 
         //Запуск потока
         feed.start();
         feeds.put(url, feed);
+
+        newSettingsItem(url, fileName, fileName, defaultFields, lastUpdateTime, defaultUpdatePeriod);
 
     }
 
@@ -186,9 +287,10 @@ public class FeedManager {
 
     }
 
-    public Map<URL, Feed> getAllFeeds() {
-        return feeds;
+    public Map<String, String> getAllFeedInfo() {
+        return settingsManager.getAllFromPropFile();
     }
+
 
     public void stopAllThreads() {
         for (Map.Entry<URL, Feed> feedEntry: feeds.entrySet()) {
@@ -196,6 +298,22 @@ public class FeedManager {
             feedEntry.getValue().interrupt();
 
         }
+    }
+
+
+    public Feed getFeedFromURL(URL url) {
+        return feeds.get(url);
+    }
+
+
+    public Map<String, String> getInfoByName(String name) {
+        Map<String, String> result = new HashMap<>();
+//
+//
+//
+//
+//
+        return result;
     }
 
     public void getAllFeedAttribures() {}

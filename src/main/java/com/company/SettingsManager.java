@@ -76,6 +76,23 @@ public class SettingsManager {
         return data;
     }
 
+    public Map<String, String> jsonStringToMap(String jsonString) {
+
+        JSONObject object = new JSONObject(jsonString);
+
+        Map<String, Object> map = object.toMap();
+
+        Map<String,String> newMap = new HashMap<String,String>();
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            if(entry.getValue() instanceof String){
+                newMap.put(entry.getKey(), (String) entry.getValue());
+            }
+        }
+
+        return newMap;
+
+    }
+
     public void clearSettings() {
         props.clear();
     }
