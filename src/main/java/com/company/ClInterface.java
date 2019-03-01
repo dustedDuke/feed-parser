@@ -16,7 +16,7 @@ import java.util.*;
 public class ClInterface {
 
     private static Scanner in;
-    private static final String messageFormat = "\t%-20s%s%n";
+    private static final String messageFormat = "\t%-50s%s%n";
     private FeedManager feedManager;
 
     public ClInterface(FeedManager feedManager) {
@@ -57,8 +57,8 @@ public class ClInterface {
 
     public void readMainOptions() {
         String input = "";
-        try {
-            while (!input.equalsIgnoreCase("exit")) {
+        while (!input.equalsIgnoreCase("exit")) {
+            try {
                 System.out.print(">> ");
                 input = in.nextLine();
                 String[] splittedInputArray = input.split("\\s+");
@@ -66,7 +66,9 @@ public class ClInterface {
 
                 if (splittedInput.get(0).equals("add")) {
 
-                    URL url = new URL(input);
+//                    System.out.println(splittedInput.get(1));
+
+                    URL url = new URL(splittedInput.get(1));
 
                     String name;
                     String fileName;
@@ -83,16 +85,22 @@ public class ClInterface {
                     }
 
 
+                    System.out.println("Starting creation");
 
 
                     Set<String> availableTags = feedManager.testConnection(url);
 
+                    System.out.println("Just read available tags");
+
                     if(availableTags != null) {
 
-                        System.out.println("Available tags: ");
+                        System.out.println("\nAvailable tags: ");
+                        System.out.println("_____________________\n");
                         for(String tag: availableTags) {
                             System.out.println(tag);
                         }
+
+                        System.out.println("\n_____________________");
 
                         // TODO проверка на правильный ввод
 
@@ -113,7 +121,7 @@ public class ClInterface {
 
                     } else {
                         System.out.println("Cannot establish connection. Try again later.");
-                        break;
+                        continue;
                     }
 
 
@@ -121,7 +129,8 @@ public class ClInterface {
 
                     input = "";
                     input = in.nextLine();
-                    if(input != "") {
+                    System.out.println(input);
+                    if(!input.isEmpty()) {
                         updatePeriod = Duration.parse(input);
                     } else {
                         // TODO исправить ввод defaultUpdatePeriod
@@ -167,6 +176,8 @@ public class ClInterface {
                             System.out.print(obj.get(key) + "\t");
                         }
 
+                        System.out.println("\n");
+
                     }
 
 
@@ -183,18 +194,21 @@ public class ClInterface {
                 } else if (splittedInput.get(0).equals("help")) {
                     showHelp();
                 }
+
+            } catch (InputMismatchException e) {
+                System.out.println("Try again.");
+//            System.out.print(">> ");
+//            input = in.nextLine();
+                continue;
+
+            } catch (MalformedURLException e) {
+                System.out.println("Malformed URL. Try again.");
+                System.out.println(e.getMessage());
+                continue;
             }
-        } catch (InputMismatchException e) {
-            System.out.println("Try again.");
-            System.out.print(">> ");
-            input = in.nextLine();
-        } catch (MalformedURLException e) {
-            System.out.println("Malformed URL. Try again.");
-            System.out.print(">> ");
-            input = in.nextLine();
         }
 
-        feedManager.stopAllThreads();
+    feedManager.stopAllThreads();
     }
 
 

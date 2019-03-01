@@ -27,7 +27,8 @@ public class FeedFile extends Thread {
 
 
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
+            System.out.println("Interrupted Feed thread");
         } catch (IOException ex) {
             ex.printStackTrace();
         }

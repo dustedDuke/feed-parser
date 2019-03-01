@@ -13,6 +13,7 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
+import java.io.File;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -51,6 +52,8 @@ public class FeedManager {
 
         feeds = new HashMap<>();
         fileQueues = new HashMap<>();
+        files = new HashMap<>();
+        fileQueuesUsage = new HashMap<>();
         this.settingsManager = settingsManager;
 
         Map<String, String> settings = this.settingsManager.getAllFromPropFile();
@@ -62,7 +65,7 @@ public class FeedManager {
 
             try {
 
-                URL url = new URL(entry.getKey());
+                URL url = new java.net.URL(entry.getKey());
                 String name = values.get(NAME);
                 String fileName = values.get(FILENAME);
                 Set<String> fields = new HashSet<>(Arrays.asList(values.get(FIELDS).split(" ")));
@@ -115,7 +118,10 @@ public class FeedManager {
         settings.put(LASTUPDATETIME, lastUpdateTime.toString());
         settings.put(UPDATEPERIOD, updatePeriod.toString());
 
-        settingsManager.addItem(url.toString(), settings);
+
+        // TODO проблема со слэшами
+        settingsManager.addItem(url.toString().replace("/", "|"), settings);
+
 
     }
 
@@ -132,9 +138,10 @@ public class FeedManager {
 
                 SyndFeedInput input = new SyndFeedInput();
                 SyndFeed feed = input.build(new XmlReader(stream));
-
+                //System.out.println(feed.getEntries().get(0));
                 // Проверка на наличие поля даты и наличие истории
-                if(feed.getPublishedDate() == null || feed.getEntries() == null) {
+                if(feed.getEntries().get(0).getPublishedDate() == null || feed.getEntries() == null) {
+                    System.out.println("No entries or no pubDate.");
                     return null;
                 }
 
@@ -146,7 +153,7 @@ public class FeedManager {
                 System.out.println(e.getMessage());
             }
         } finally {
-            System.out.println("done");
+            //System.out.println("done");
         }
 
         return null;
@@ -260,15 +267,25 @@ public class FeedManager {
 
     public void unsubscribeFrom(URL url) {
 
+        System.out.println("Unsubscribing from " + url.toString());
+
         for(Map.Entry<URL, Feed> feedEntry: feeds.entrySet()) {
-            if(feedEntry.getKey() == url) {
+
+            // TODO не входит сюда
+//            System.out.println(feedEntry.getKey().toString());
+//            System.out.println(url.toString().replace("/", "|"));
+            //TODO проверить нужно ли
+            if(feedEntry.getKey().toString().replace("/", "|").equals(url.toString().replace("/", "|"))) {
 
                 feedEntry.getValue().interrupt();
-                settingsManager.delItem(url.toString());
+                // TODO URL проблема со слэшами
+                String fileName = settingsManager.getProp(url.toString().replace("/", "|"), "fileName");
 
-                //Удаление очереди на файл после удаления фида
-                String fileName = settingsManager.getProp(url.toString(), "fileName");
+                // TODO URL проблема со слэшами
+                settingsManager.delItem(url.toString().replace("/", "|"));
 
+                //Удаление очереди на файл после удаления фида TODO fileName = null
+                System.out.println("fileQueuesUsage.get(fileName) == " + fileQueuesUsage.get(fileName) + "  *" + fileName);
                 // Проверка, ссылается ли кто-то на этот файл
                 if(fileQueuesUsage.get(fileName) == 1) {
 
@@ -277,10 +294,22 @@ public class FeedManager {
 
                     fileQueues.remove(fileName);
                     fileQueuesUsage.remove(fileName);
+
+                    //Удалить сам файл
+                    File file = new File(fileName);
+                    if(file.delete()) {
+                        System.out.println("Feed file deleted successfully.");
+                    } else {
+                        System.out.println("Error while deleting feed file " + fileName + ". Please delete " +
+                                "file manually if possible.");
+                    }
+
                 }
 
                 // TODO очень плохо
                 feeds.remove(feedEntry);
+
+
 
             }
         }

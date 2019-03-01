@@ -3,6 +3,7 @@ package com.company;
 import org.json.JSONObject;
 
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
@@ -31,21 +32,32 @@ public class SettingsManager {
 
     }
 
+    private void storeProps() {
+        try {
+            props.store(new FileWriter(propFileName), "Writing properties to file.");
+        } catch (IOException e) {
+            System.out.println("Error while saving Properties to file.");
+        }
+    }
+
     public void addItem(String item, Map<String, String> propTable) {
         JSONObject itemProps = new JSONObject(propTable);
         props.putIfAbsent(item, itemProps.toString());
-
+        storeProps();
     }
 
 
     public void delItem(String item) {
         props.remove(item);
+        storeProps();
     }
 
 
     public String getProp(String item, String prop) {
 
+        // TODO itemValue = null
         String itemValue = props.getProperty(item);
+
 
         if(itemValue != null) {
             JSONObject itemProps = new JSONObject(itemValue);
@@ -53,7 +65,6 @@ public class SettingsManager {
         }
 
         return null;
-
     }
 
     public void setProp(String item, String prop, String value) {
@@ -62,6 +73,7 @@ public class SettingsManager {
         JSONObject itemProps = new JSONObject(itemValue);
         itemProps.put(prop, value);
         props.setProperty(item, itemProps.toString());
+        storeProps();
 
     }
 
@@ -95,6 +107,7 @@ public class SettingsManager {
 
     public void clearSettings() {
         props.clear();
+        storeProps();
     }
 
 }
