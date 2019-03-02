@@ -1,17 +1,16 @@
-package com.company;
+package com.dustedduke;
 
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.sql.ClientInfoStatus;
 import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 import java.util.*;
+
+/**
+ * Пользовательский интерфейс. добавление, удаление и изменение параметров RSS/Atom feed.
+ */
 
 public class ClInterface {
 
@@ -20,19 +19,25 @@ public class ClInterface {
     private FeedManager feedManager;
 
     public ClInterface(FeedManager feedManager) {
+
         this.feedManager = feedManager;
     }
 
+    /**
+     * Вывод приветственного сообщения
+     */
     private void showWelcomeMessage() {
+
         System.out.println("***RSS reader***");
-        //TODO Вывод времени последнего использования
-        System.out.println("Last usage: 18:29 2019-02-25");
         System.out.println("type 'help' for help");
+
     }
 
-    private void showHelp() {
+    /**
+     * Вывод help
+     */
+    private void showHelpMessage() {
 
-        // TODO перенести dateperiod
         System.out.printf(messageFormat, "add url [file] [updatePeriod (PnDTnHnMn.nS.)]" ,"add new feed");
         System.out.printf(messageFormat, "rm [url]", "stop feed subscription");
         System.out.printf(messageFormat, "list", "show all subscriptions and parameters");
@@ -40,25 +45,38 @@ public class ClInterface {
         System.out.printf(messageFormat, "exit", "exit");
     }
 
-    private void showOptions() {
+    /**
+     * Вывод меню опций
+     */
+    private void showOptionsMessage() {
+
         System.out.printf(messageFormat, "par [url]", "show current feed parameters");
         //TODO Изменение параметров feed
         System.out.printf(messageFormat, "setPeriod [url] [freq]", "set new period");
         System.out.printf(messageFormat, "setFields [url] [fields]", "choose file to store feed");
         System.out.printf(messageFormat, "setFile [url] [file]", "choose file to store feed");
         System.out.printf(messageFormat, "exit", "exit");
+
     }
 
     public void start() {
+
         showWelcomeMessage();
         in = new Scanner(System.in);
         readMainOptions();
+
     }
 
+    /**
+     * Обработка опций основного меню
+     */
     public void readMainOptions() {
+
         String input = "";
+
         while (!input.equalsIgnoreCase("exit")) {
             try {
+
                 System.out.print(">> ");
                 input = in.nextLine();
                 String[] splittedInputArray = input.split("\\s+");
@@ -66,10 +84,7 @@ public class ClInterface {
 
                 if (splittedInput.get(0).equals("add")) {
 
-//                    System.out.println(splittedInput.get(1));
-
                     URL url = new URL(splittedInput.get(1));
-
                     String name;
                     String fileName;
                     Duration updatePeriod;
@@ -84,13 +99,8 @@ public class ClInterface {
                         name = fileName;
                     }
 
-
                     System.out.println("Starting creation");
-
-
                     Set<String> availableTags = feedManager.testConnection(url);
-
-                    System.out.println("Just read available tags");
 
                     if(availableTags != null) {
 
@@ -113,9 +123,10 @@ public class ClInterface {
                             fields = new HashSet<String>(Arrays.asList(input.split("\\s+")));
 
                         } else {
-                            // TODO исправить выбор default тегов (возможно вызовом функции сразу)
+
                             fields.add("title");
                             fields.add("contents");
+
                         }
 
 
@@ -124,43 +135,29 @@ public class ClInterface {
                         continue;
                     }
 
-
                     System.out.println("Enter update period in format [PnDTnHnMn.nS] or Press [Enter] to skip.");
 
                     input = "";
                     input = in.nextLine();
                     System.out.println(input);
+
                     if(!input.isEmpty()) {
                         updatePeriod = Duration.parse(input);
                     } else {
-                        // TODO исправить ввод defaultUpdatePeriod
                         updatePeriod = Duration.parse("PT20.345S");
                     }
-
-
-
 
                     System.out.println("Adding new feed...");
                     feedManager.subscribeTo(url, name, fileName, fields, updatePeriod);
 
-
-
-
-
                 } else if (splittedInput.get(0).equals("rm")) {
 
-                    // TODO НАЧАТЬ ЗДЕСЬ
                     if(splittedInput.size() == 2) {
                         feedManager.unsubscribeFrom(new URL(splittedInput.get(1)));
                     } else {
                         System.out.println("Wrong input. Try again.");
                         continue;
                     }
-
-
-
-
-
 
                 } else if (splittedInput.get(0).equals("list")) {
 
@@ -183,46 +180,37 @@ public class ClInterface {
 
                 } else if (splittedInput.get(0).equals("params")) {
 
-
-
-                    showOptions();
+                    showOptionsMessage();
                     readSettingsOptions();
 
-
-
-
                 } else if (splittedInput.get(0).equals("help")) {
-                    showHelp();
+                    showHelpMessage();
                 }
 
             } catch (InputMismatchException e) {
                 System.out.println("Try again.");
-//            System.out.print(">> ");
-//            input = in.nextLine();
                 continue;
 
             } catch (MalformedURLException e) {
                 System.out.println("Malformed URL. Try again.");
-                System.out.println(e.getMessage());
                 continue;
             }
         }
 
     feedManager.stopAllThreads();
+
     }
 
-
-    //        System.out.printf(messageFormat, "par [name]", "show current feed parameters");
-    //        //TODO Изменение параметров feed
-    //        System.out.printf(messageFormat, "setPeriod [name] [freq]", "set new period");
-    //        System.out.printf(messageFormat, "setFields [name] [fields]", "choose file to store feed");
-    //        System.out.printf(messageFormat, "setFile [name] [file]", "choose file to store feed");
-    //        System.out.printf(messageFormat, "exit", "exit");
-
+    /**
+     * Обработка опций меню настроек
+     */
     public void readSettingsOptions() {
         String input = "";
-        try {
-            while (!input.equalsIgnoreCase("exit")) {
+
+        while (!input.equalsIgnoreCase("exit")) {
+
+            try {
+
                 System.out.print(">> ");
                 input = in.nextLine();
 
@@ -235,11 +223,11 @@ public class ClInterface {
 
                     // TODO достать все настройки
                     String url;
-                    if(splittedInput.size() >= 3) {
+                    if (splittedInput.size() >= 3) {
                         url = splittedInput.get(1);
 
                         Feed feed = feedManager.getFeedFromURL(new URL(url));
-                        if(feed != null) {
+                        if (feed != null) {
 
                             Duration newDur = Duration.parse(splittedInput.get(2));
                             feed.setUpdatePeriod(newDur);
@@ -258,13 +246,13 @@ public class ClInterface {
                 } else if (splittedInput.get(0).equals("setFields")) {
 
 
-                    if(splittedInput.size() >= 3) {
+                    if (splittedInput.size() >= 3) {
 
                         String url = splittedInput.get(1);
                         Set<String> fields = new HashSet<String>(Arrays.asList(splittedInput.get(2).split("\\s+")));
 
                         Feed feed = feedManager.getFeedFromURL(new URL(url));
-                        if(feed != null) {
+                        if (feed != null) {
                             feed.setItemsToRead(fields);
                         } else {
                             System.out.println("Cannot find feed with URL: " + url);
@@ -287,25 +275,23 @@ public class ClInterface {
 
                     String name = feed.getFeedName();
                     String fileName = feed.getFileName();
-                    ZonedDateTime lastUpdateDateTime = feed.getLastUpdatedateTime();
+                    LocalDateTime lastUpdateDateTime = feed.getLastUpdatedateTime();
                     Duration updatePeriod = feed.getUpdatePeriod();
                     Set<String> itemsToRead = feed.getItemsToRead();
 
                     feedManager.unsubscribeFrom(url);
                     feedManager.subscribeTo(url, name, fileName, itemsToRead, lastUpdateDateTime, updatePeriod);
-
                 }
-            }
 
-        } catch (InputMismatchException e) {
-            System.out.println("Try again.");
-            System.out.print(">> ");
-            input = in.nextLine();
-        } catch (MalformedURLException e2) {
-            System.out.println("Try again.");
-            System.out.print(">> ");
-            input = in.nextLine();
+            } catch (InputMismatchException e) {
+                System.out.println("Try again.");
+                System.out.print(">> ");
+                input = in.nextLine();
+            } catch (MalformedURLException e2) {
+                System.out.println("Try again.");
+                System.out.print(">> ");
+                input = in.nextLine();
+            }
         }
     }
-
 }

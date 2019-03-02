@@ -1,7 +1,4 @@
-package com.company;
-
-import com.company.ClInterface;
-import com.company.SettingsManager;
+package com.dustedduke;
 
 import java.io.IOException;
 

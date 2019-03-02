@@ -1,63 +1,95 @@
-package com.company;
+package com.dustedduke;
 
 import org.json.JSONObject;
 
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
+
+/**
+ * Менеджер файла настроек config.properties
+ */
 
 public class SettingsManager {
 
-    private final String propFileName = "config.properties";
+    private static final String rootPath = Thread.currentThread().getContextClassLoader().getResource("").getPath();
+    private static final String propFileName = rootPath + "config.properties";
     private Properties props;
     private InputStream inputStream;
+    private FileOutputStream fout;
 
-    // TODO пересмотреть SettingsManager IOException
+    /**
+     * Создание объекта Properties и загрузка данных предыдущей сессии из файла настроек.
+     * @throws IOException
+     */
     SettingsManager() throws IOException {
-
 
         props = new Properties();
         inputStream = getClass().getClassLoader().getResourceAsStream(propFileName);
 
+
         try {
 
             props.load(inputStream);
+            fout = new FileOutputStream(propFileName, false);
 
         } catch (IOException e) {
             inputStream.close();
+            fout.close();
             throw new IOException(e);
+        } finally {
+            //inputStream.close();
+            //fout.close();
         }
 
     }
 
+    /**
+     * Запись настроек в файл
+     */
     private void storeProps() {
+
         try {
-            props.store(new FileWriter(propFileName), "Writing properties to file.");
+
+            props.store(fout, "Writing properties to file.");
+
         } catch (IOException e) {
             System.out.println("Error while saving Properties to file.");
         }
+
     }
 
+    /**
+     * Добавление элемента в файл настроек
+     * @param item название элемента
+     * @param propTable параметры элемента с названиями
+     */
     public void addItem(String item, Map<String, String> propTable) {
+
         JSONObject itemProps = new JSONObject(propTable);
         props.putIfAbsent(item, itemProps.toString());
         storeProps();
     }
 
-
+    /**
+     * Удаление элемента из файла настроек
+     * @param item
+     */
     public void delItem(String item) {
+
         props.remove(item);
         storeProps();
+
     }
 
-
+    /**
+     * Получение параметра конкретного элемента
+     * @param item название элемента
+     * @param prop название параметра
+     * @return значение параметра
+     */
     public String getProp(String item, String prop) {
 
-        // TODO itemValue = null
         String itemValue = props.getProperty(item);
-
 
         if(itemValue != null) {
             JSONObject itemProps = new JSONObject(itemValue);
@@ -65,18 +97,30 @@ public class SettingsManager {
         }
 
         return null;
+
     }
 
+    /**
+     * Задание параметра
+     * @param item название элемента
+     * @param prop название параметра
+     * @param value новое значение параметра
+     */
     public void setProp(String item, String prop, String value) {
 
         String itemValue = props.getProperty(item);
         JSONObject itemProps = new JSONObject(itemValue);
+
         itemProps.put(prop, value);
         props.setProperty(item, itemProps.toString());
         storeProps();
 
     }
 
+    /**
+     * Получение всех полей из файла настроек
+     * @return поля с соответствующими параметрами
+     */
     public Map<String, String>  getAllFromPropFile() {
 
         Map<String, String> data = new HashMap<>();
@@ -88,13 +132,19 @@ public class SettingsManager {
         return data;
     }
 
+
+    /**
+     * Конвертация JSON строки в отображение
+     * @param jsonString
+     * @return элементы объекта JSON
+     */
     public Map<String, String> jsonStringToMap(String jsonString) {
 
         JSONObject object = new JSONObject(jsonString);
-
         Map<String, Object> map = object.toMap();
 
         Map<String,String> newMap = new HashMap<String,String>();
+
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             if(entry.getValue() instanceof String){
                 newMap.put(entry.getKey(), (String) entry.getValue());
@@ -105,6 +155,9 @@ public class SettingsManager {
 
     }
 
+    /**
+     * Очистка файла настроек и внутреннего представления настроек.
+     */
     public void clearSettings() {
         props.clear();
         storeProps();

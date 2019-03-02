@@ -1,13 +1,9 @@
-package com.company;
+package com.dustedduke;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.*;
 import java.util.Date;
-import java.io.InputStreamReader;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 
@@ -22,12 +18,16 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
+/**
+ * Скачивание и обработка отдельного RSS feed.
+ */
+
 public class Feed extends Thread {
 
     private volatile URL url;
     private volatile String name;
     private volatile String fileName;
-    private volatile ZonedDateTime lastUpdateDateTime;
+    private volatile LocalDateTime lastUpdateDateTime;
     private volatile Duration updatePeriod;
     private volatile BlockingQueue<String> fileQueue;
     private volatile Set<String> itemsToRead;
@@ -38,18 +38,15 @@ public class Feed extends Thread {
     public String getFileName() {
         return fileName;
     }
-    public ZonedDateTime getLastUpdatedateTime() {
+    public LocalDateTime getLastUpdatedateTime() {
         return lastUpdateDateTime;
     }
-
     public Duration getUpdatePeriod() {
         return updatePeriod;
     }
-
     public Set<String> getItemsToRead() {
         return itemsToRead;
     }
-
 
     public void setUrl(URL url) {
         this.url = url;
@@ -57,7 +54,7 @@ public class Feed extends Thread {
     public void setFileName(String fileName) {
         this.fileName = fileName;
     }
-    public void setLastUpdateDateTime(ZonedDateTime lastUpdateDateTime) {
+    public void setLastUpdateDateTime(LocalDateTime lastUpdateDateTime) {
         this.lastUpdateDateTime = lastUpdateDateTime;
     }
     public void setUpdatePeriod(Duration updatePeriod) {
@@ -67,10 +64,17 @@ public class Feed extends Thread {
         this.itemsToRead = itemsToRead;
     }
 
-
-
-
-    public Feed(URL url, String name, String fileName, Set<String> itemsToRead, BlockingQueue<String> fileQueue, ZonedDateTime lastUpdateDateTime, Duration updatePeriod) {
+    /**
+     * Чтение параметров для будущего создания соединения
+     * @param url адрес RSS feed
+     * @param name название для дальнейшего обращения вместо ссылки
+     * @param fileName название файла для хранения записей
+     * @param itemsToRead множество полей для чтения
+     * @param fileQueue очередь записи в файл, ассоциированная с данным фидом
+     * @param lastUpdateDateTime время последнего обновления фида (при инициации выставляется текущее время)
+     * @param updatePeriod период обновления фида
+     */
+    public Feed(URL url, String name, String fileName, Set<String> itemsToRead, BlockingQueue<String> fileQueue, LocalDateTime lastUpdateDateTime, Duration updatePeriod) {
         this.url = url;
         this.name = name;
         this.fileName = fileName;
@@ -80,13 +84,16 @@ public class Feed extends Thread {
         this.itemsToRead = itemsToRead;
     }
 
+    /**
+     * Фильтрация полей отдельной записи в соответствии с заданным фильтром полей.
+     * @param entry запись Rome.
+     * @return отфильтрованная запись в виде строки.
+     */
     private String filterFeedEntry(SyndEntry entry) {
 
         String result = "";
 
         for(String item: itemsToRead) {
-
-            // TODO поставить в правильном порядке
 
             if(item.equals("author")) result += entry.getAuthor();
             if(item.equals("category")) result += entry.getCategories().get(0).toString();
@@ -105,43 +112,42 @@ public class Feed extends Thread {
         return result;
     }
 
-    // TODO разбить на функции
-
+    @Override
     public void run() {
 
         try {
+
             CloseableHttpClient client = HttpClients.createMinimal();
             HttpUriRequest request = new HttpGet(url.toString());
 
             try {
 
-                while(lastUpdateDateTime.compareTo(ZonedDateTime.now()) < 0) {
+                while(lastUpdateDateTime.compareTo(LocalDateTime.now()) < 0) {
 
                     CloseableHttpResponse response = client.execute(request);
                     InputStream stream = response.getEntity().getContent();
 
                     SyndFeedInput input = new SyndFeedInput();
                     SyndFeed feed = input.build(new XmlReader(stream));
-                    //System.out.println(feed.getTitle());
 
                     // Проверка валидности фида
                     if(feed.getPublishedDate() == null || feed.getEntries() == null) {
                         this.interrupt();
                     }
 
-                    // TODO проверка даты в самом RSS
-                    Date lastUpdate = Date.from(lastUpdateDateTime.toInstant());
+                    // Проверка даты в самом RSS
+                    Date lastUpdate = Date.from(lastUpdateDateTime.atZone(ZoneId.systemDefault()).toInstant());
                     if(lastUpdate.compareTo(feed.getPublishedDate()) >= 0) {
                         continue;
                     }
 
                     // Выбор полей
-                    fileQueue.put(feed.toString());
+                    //fileQueue.put(feed.toString()); -- зачем, если потом запись по отдельности?
                     for(SyndEntry entry: feed.getEntries()) {
                         fileQueue.put(filterFeedEntry(entry));
                     }
 
-                    lastUpdateDateTime = ZonedDateTime.now().plus(updatePeriod);
+                    lastUpdateDateTime = LocalDateTime.now().plus(updatePeriod);
 
                 }
 
@@ -150,26 +156,8 @@ public class Feed extends Thread {
                 System.out.println(e.getMessage());
             }
         } finally {
-            System.out.println("done");
+            //System.out.println("done");
         }
-
     }
-
-    // TODO переместить в utils
-//    private static ZonedDateTime sum(ZonedDateTime t1, ZonedDateTime t2) {
-//
-//        LocalDateTime newT1 = t1.plusYears(t2.getYear())
-//            .plusMonths(t2.getMonthValue())
-//            .plusDays(t2.getDayOfMonth())
-//            .plusHours(t2.getHour())
-//            .plusMinutes(t2.getMinute())
-//            .plusSeconds(t2.getSecond());
-//
-//        ZonedDateTime newT1 =
-//                t1.pl
-//
-//        return newT1;
-//
-//    }
 
 }
