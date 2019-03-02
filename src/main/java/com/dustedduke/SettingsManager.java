@@ -34,9 +34,12 @@ public class SettingsManager {
             fout = new FileOutputStream(propFileName, false);
 
         } catch (IOException e) {
-            inputStream.close();
-            fout.close();
-            throw new IOException(e);
+            File file = new File(propFileName);
+            fout = new FileOutputStream(propFileName, false);
+            System.out.println("Settings file created.");
+            //inputStream.close();
+            //fout.close();
+            //throw new IOException(e);
         } finally {
             //inputStream.close();
             //fout.close();
