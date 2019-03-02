@@ -20,23 +20,36 @@ public class SettingsManager {
      * Создание объекта Properties и загрузка данных предыдущей сессии из файла настроек.
      * @throws IOException
      */
-    SettingsManager() throws IOException {
+    SettingsManager() {
 
         props = new Properties();
-        inputStream = getClass().getClassLoader().getResourceAsStream(propFileName);
-
+        //inputStream = getClass().getClassLoader().getResourceAsStream(propFileName);
 
         try {
 
+            inputStream = new FileInputStream(propFileName);
+
             props.load(inputStream);
-            String rootPath = Thread.currentThread().getContextClassLoader().getResource("").getPath();
-            propFileName = rootPath + propFileName;
+            //String rootPath = Thread.currentThread().getContextClassLoader().getResource("").getPath();
+
+            //propFileName = rootPath + propFileName;
             fout = new FileOutputStream(propFileName, false);
 
         } catch (IOException e) {
+            System.out.println("Trying to create file");
             File file = new File(propFileName);
-            fout = new FileOutputStream(propFileName, false);
-            System.out.println("Settings file created.");
+
+
+            try {
+                file.createNewFile();
+                inputStream = new FileInputStream(file.getAbsolutePath());
+                props.load(inputStream);
+
+                fout = new FileOutputStream(file.getAbsolutePath(), false);
+                System.out.println("Settings file created.");
+            } catch (IOException ex) {
+                System.out.println("Error creating file output stream.");
+            }
             //inputStream.close();
             //fout.close();
             //throw new IOException(e);

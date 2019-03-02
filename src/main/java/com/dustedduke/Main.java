@@ -10,15 +10,10 @@ public class Main {
         SettingsManager settingsManager;
         FeedManager feedManager;
 
-        try {
 
-            settingsManager = new SettingsManager();
 
-         } catch (IOException e) {
-            System.out.println("Error while configuring settings.");
-            System.out.println("Exception: " + e);
-            return;
-        }
+        settingsManager = new SettingsManager();
+
 
         feedManager = new FeedManager(settingsManager);
 
