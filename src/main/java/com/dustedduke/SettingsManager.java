@@ -11,8 +11,7 @@ import java.util.*;
 
 public class SettingsManager {
 
-    private static final String rootPath = Thread.currentThread().getContextClassLoader().getResource("").getPath();
-    private static final String propFileName = rootPath + "config.properties";
+    private String propFileName = "config.properties";
     private Properties props;
     private InputStream inputStream;
     private FileOutputStream fout;
@@ -30,6 +29,8 @@ public class SettingsManager {
         try {
 
             props.load(inputStream);
+            String rootPath = Thread.currentThread().getContextClassLoader().getResource("").getPath();
+            propFileName = rootPath + propFileName;
             fout = new FileOutputStream(propFileName, false);
 
         } catch (IOException e) {
